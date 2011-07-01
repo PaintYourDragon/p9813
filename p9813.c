@@ -324,9 +324,9 @@ TCstatusCode TCsetGamma(
 		d = (double)i / 255.0;
 		rgbGamma[i][0] = rMin +
 		  (unsigned char)floor(rRange * pow(d,rGamma) + 0.5);
-		rgbGamma[1][1] = gMin +
+		rgbGamma[i][1] = gMin +
 		  (unsigned char)floor(gRange * pow(d,gGamma) + 0.5);
-		rgbGamma[2][2] = bMin +
+		rgbGamma[i][2] = bMin +
 		  (unsigned char)floor(bRange * pow(d,bGamma) + 0.5);
 	}
 
