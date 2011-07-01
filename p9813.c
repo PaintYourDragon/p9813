@@ -60,12 +60,12 @@
 
 #define DEFAULT_GAMMA 2.4
 
-/* The ledBimask[] array maps pixel strands (numbered 0 to 6) to the
-   corresponding pins that issue data through the FTDI chip.  Element
-   #7 is normally reserved for the serial clock signal, which can be
-   remapped to a different pin just like any of the strands.  If CBUS
-   serial clock has been enabled, pin 7 is available as another data
-   strand and does not need to be used for clocking.  See README.txt.
+/* The strandBitMask[] array maps pixel strands (numbered 0 to 6) to
+   the corresponding pins that issue data through the FTDI chip.
+   Element #7 is normally reserved for the serial clock signal, which
+   can be remapped to a different pin just like any of the strands.
+   If CBUS serial clock has been enabled, pin 7 is available as another
+   data strand and does not need to be used for clocking.  See README.txt.
 
    In the library's default startup configuration, the DTR and RTS pins
    are toggled together to allow the same code to work unmodified with
