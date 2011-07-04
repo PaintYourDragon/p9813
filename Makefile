@@ -1,5 +1,5 @@
 EXECS      = rgb gamma random demo
-LIB_LED    = libp9813.o
+LIB_LED    = libp9813.a
 CC         = gcc
 LDFLAGS    = -lftd2xx
 
@@ -31,15 +31,18 @@ random: random.c $(LIB_LED)
 demo: demo.c $(LIB_LED)
 	$(CC) $(CFLAGS) demo.c $(LIB_LED) $(LDFLAGS) -o demo
 
-$(LIB_LED): p9813.c p9813.h calibration.h
-	$(CC) $(CFLAGS) p9813.c -c -o $(LIB_LED)
+$(LIB_LED): p9813.o
+	ar -r $(LIB_LED) p9813.o
+
+p9813.o: p9813.c p9813.h calibration.h
+	$(CC) $(CFLAGS) p9813.c -c
 
 install:
 	sudo cp p9813.h    /usr/local/include/
 	sudo cp $(LIB_LED) /usr/local/lib/
 
 clean:
-	rm -f $(EXECS) *.o core
+	rm -f $(EXECS) *.o *.a core
 
 # On Mac and Linux, the Virtual COM Port driver must be unloaded in
 # order to use bitbang mode.  Use "make unload" to do this, but ALWAYS
