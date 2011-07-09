@@ -6,15 +6,18 @@ LDFLAGS    = -lftd2xx
 # Platform-specific rules
 ifeq ($(shell uname -s),Darwin)
   # Mac OS X
-  CFLAGS   = -fast -fomit-frame-pointer
+  CFLAGS   = -fast -fomit-frame-pointer -m32
+  SUDO     = sudo
 endif
 ifeq ($(shell uname -s),Linux)
   CFLAGS   = -O3 -fomit-frame-pointer
   LDFLAGS += -lpthread -lrt -lm
+  SUDO     = sudo
 endif
 ifeq ($(findstring CYGWIN,$(shell uname -s)),CYGWIN)
   CFLAGS   = -O3 -fomit-frame-pointer -DCYGWIN
   LDFLAGS  = /usr/local/lib/ftd2xx.lib
+  SUDO     =
 endif
 
 all: $(EXECS)
@@ -38,8 +41,8 @@ p9813.o: p9813.c p9813.h calibration.h
 	$(CC) $(CFLAGS) p9813.c -c
 
 install:
-	sudo cp p9813.h    /usr/local/include/
-	sudo cp $(LIB_LED) /usr/local/lib/
+	$(SUDO) cp p9813.h    /usr/local/include/
+	$(SUDO) cp $(LIB_LED) /usr/local/lib/
 
 clean:
 	rm -f $(EXECS) *.o *.a core
@@ -59,7 +62,7 @@ ifeq ($(shell uname -s),Darwin)
 	sudo kextload $(KEXTFLAGS) $(DRIVER)
 else
 ifeq ($(shell uname -s),Linux)
-# Linux driver stuff - Careful! This is persistent between reboots!
+# Linux driver stuff
   unload:
 	sudo modprobe -r ftdi_sio
 	sudo modprobe -r usbserial

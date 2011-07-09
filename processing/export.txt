@@ -1,0 +1,3 @@
+application.macosx  = TotalControl.jar, libTotalControl.jnilib
+application.linux   = TotalControl.jar, libTotalControl.so
+application.windows = TotalControl.jar, TotalControl.dll

@@ -221,11 +221,10 @@ these cannot be used at the same time.  The included Makefile includes
 two commands, "make unload" and "make load", that will disable the serial
 port functionality (enabling bitbang mode), and restore it (enabling
 Arduino, etc.), respectively.  Remember to ALWAYS "make load" when you
-are done using bitbang mode...especially on Linux systems, where this
-selection is persistent between reboots.  Forgetting this step can be
-very aggravating later on when trying to do normal serial communication
-such as Arduino programming.  This is a non-issue with the Windows
-driver, which can switch between serial and bitbang modes transparently.
+are done using bitbang mode.  Forgetting this step can be very aggravating
+later on when trying to do normal serial communication such as Arduino
+programming.  This is a non-issue with the Windows driver, which can
+switch between serial and bitbang modes transparently.
 
 
 
@@ -928,6 +927,73 @@ ongoing statistics.  No commands other than -s and -p.
 
 
 
+                            PROCESSING LIBRARY
+
+The "processing" subdirectory contains files for building a p9813 library
+for the Processing language/environment (www.processing.org).  This isn't
+a drop-in library for Processing; the p9813 C library needs to have
+previously been built and installed, and the Processing library then needs
+to be built using "make" and "make install".  It's advisable to first
+check the Makefile to validate the locations of Java- and Processing-
+related files and directories, to see whether they correspond to your own
+system configuration (especially with Cygwin!).
+
+All of the C library functionality is present, but the calling syntax is
+somewhat different; method overloading reduces the number of functions.
+See the "Blink" example sketch for a very simple use case.
+
+Because the Processing library guidelines recommend against prefixing
+libraries with the letter "p," the library is instead called TotalControl
+in reference to the Total Control Lighting LED pixels.
+
+To use the library from your own code, import the TotalControl library
+and create a TotalControl object:
+
+	import TotalControl.*;
+
+	TotalControl tc;
+
+Method names are then appended to the object name, e.g.:
+
+	int status = tc.open(1,25);
+
+Several methods map directly to corresponding C functions of the original
+library.  For example, if the TotalControl object is called "tc," these
+methods then substitute for the C equivalents, with the same parameters:
+
+	C library           Processing library
+	----------------    ------------------
+	TCopen()            tc.open()
+	TCclose()           tc.close()
+	TCsetStrandPin()    tc.setStrandPin()
+	TCprintError()      tc.printError()
+
+The remaining methods are invoked somewhat differently:
+
+The tc.setGamma() method replaces the functions TCsetGamma(),
+TCsetGammaSimple() and TCdisableGamma().  The number of parameters will
+determine the behavior: the functions named correspond to nine, one and
+zero parameters, respectively.
+
+tc.refresh() replaces TCrefresh(), with slightly different parameters.
+If no parameters are given, this corresponds to TCrefresh(NULL,NULL,NULL).
+If one parameter, this is presumed to be the pixel data, i.e.
+TCrefresh(data,NULL,NULL).  And if two parameters, these are presumed the
+pixel data and remapping table, e.g. TCrefresh(data,remap,NULL).  There is
+no facility to pass a TCstats structure in the Processing version of the
+library.  Instead, a single instance of the structure is handled internally
+by the library, and is always automatically passed to the refresh function.
+tc.initStats() and tc.printStats() clear and print the contents of this
+structure, but at present there's no facility for accessing individual
+members in Processing.
+
+If you start working with this library and find that the device won't open,
+remember that the FTDI USB-to-serial driver needs to be disabled on Mac and
+Linux systems.  "make unload" in either the C or Processing makefiles will
+handle this, and "make load" will restore serial functionality.
+
+
+
                                KNOWN ISSUES
 
 The bits-per-second figures in the TCstats structure are not accurate when
@@ -937,8 +1003,6 @@ it may require use of a different time function.
 
 
                                FUTURE NOTES
-
-Want to add bindings for other languages, but especially Processing.
 
 Might consider extending statistics structure to include per-strand
 current estimates along with the system total.  This could help with
