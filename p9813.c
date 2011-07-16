@@ -9,13 +9,20 @@
                is closed-source.  Might change this to use the open-source
                libftdi, or perhaps an either/or compile-time switch.
 
- History     : 6/15/2011  P. Burgess  Initial implementation
-               6/18/2011  P. Burgess  Cleaned up and library-ified, added
-                                      throughput and current statistics.
-               6/28/2011  P. Burgess  Changed overall behavior to simplify
-                                      use with continuous streaming data
-                                      such as video.  Added remapping
-                                      functionality and CBUS clock mode.
+ History     : 06/15/2011  Initial implementation
+               06/18/2011  Cleaned up and library-ified, added throughput
+                           and current statistics.
+               06/28/2011  Changed overall behavior to simplify use with
+                           continuous streaming data such as video.  Added
+                           remapping functionality and CBUS clock mode.
+               07/15/2011  Addressed an apparent issue with longer strands.
+                           It seems the standard 32-bit latch packet is
+                           only good for up to 64 pixels; each add'l 64
+                           pixels (or subset thereof) requires an extra
+                           32 bits of latch.  This is an empirical finding;
+                           haven't seen it mentioned in datasheet or in
+                           other code, and it's possible I might just be
+                           overlooking something stupid in the code.
 
  License     : Copyright 2011 Phillip Burgess.    www.PaintYourDragon.com
 
@@ -125,10 +132,11 @@ static TCstatusCode openAlloc(
 	}
 
 	/* All library memory use is handled in one big malloc.
-	   The data types are sorted to avoid alignment issues. */
+	   The data types are sorted to avoid alignment issues.
+	   pixelOutBuffer includes latch data at end. */
 	if((pixelCurrent = (double *)malloc(
-	    (s * p * sizeof(double)) +   /* pixelCurrent array +         */
-	    ((p + 1) * bytesPerPixel)))) /* pixelOutBuffer (incl. latch) */
+	    (s * p * sizeof(double)) +      /* pixelCurrent array + */
+	    ((p+((p+63)/64)) * bytesPerPixel))))  /* pixelOutBuffer */
 	{
 		pixelOutBuffer = (unsigned char *)&pixelCurrent[s * p];
 
@@ -202,7 +210,7 @@ TCstatusCode TCopen(
   int           p)
 {
 	DWORD        out;  /* Return status from FT_Write */
-	int          i,len;
+	int          i,latchOffset,latchLen;
 	TCstatusCode status;
 
 	if((s < 1) || (s > 16) || (p < 1)) return TC_ERR_VALUE;
@@ -218,16 +226,17 @@ TCstatusCode TCopen(
 	   datasheet says, but in practice syncs more reliably.  Latch only
 	   needs to be "rendered" once at the end of pixelOutBuffer and
 	   never changes after that, unless the clock pin is changed. */
-	len = p * bytesPerPixel;
-	bzero(&pixelOutBuffer[len],bytesPerPixel);  /* Latch is all zeros */
+	latchOffset = bytesPerPixel * p;
+	latchLen    = bytesPerPixel * ((p + 63) / 64);
+	bzero(&pixelOutBuffer[latchOffset],latchLen);
 	if(64 == bytesPerPixel)
 	{
 		/* If software-bitbanging the clock, add those bits. */
-		for(i=1;i<bytesPerPixel;i+=2)
-			pixelOutBuffer[len + i] = strandBitMask[7];
+		for(i=1;i<latchLen;i+=2)
+			pixelOutBuffer[latchOffset + i] = strandBitMask[7];
 	}
-	if((FT_OK != FT_Write(ftdiHandle,&pixelOutBuffer[len],bytesPerPixel,
-	  &out)) || (bytesPerPixel != out))
+	if((FT_OK != FT_Write(ftdiHandle,&pixelOutBuffer[latchOffset],
+	  latchLen,&out)) || (latchLen != out))
 		return TC_ERR_WRITE;
 
 	/* Issue initial blank image to LEDs ASAP. */
@@ -425,19 +434,10 @@ TCstatusCode TCrefresh(
 	   subsequent loop because the strand/pixel remapping tables could
 	   leave gaps in the sequence -- it isn't guaranteed to have touched
 	   every pixel.  This is normal and not a bad thing. */
+	len = pixelsPerStrand * bytesPerPixel;
+	bzero(pixelOutBuffer,len);
 	if(bytesPerPixel == 64)
-	{
-		strand = strandBitMask[7];
-		len    = pixelsPerStrand * bytesPerPixel;
-		for(i=0;i<len;)
-		{
-			pixelOutBuffer[i++] = 0;
-			pixelOutBuffer[i++] = strand;
-		}
-	} else
-	{
-		bzero(pixelOutBuffer,pixelsPerStrand * bytesPerPixel);
-	}
+		for(i=1;i<len;i+=2) pixelOutBuffer[i] = strandBitMask[7];
 
 	/* The structure of the pixelOutBuffer[] array is described in the
 	   Hack-a-Day article referenced in the README.  Picture it like one
@@ -502,7 +502,7 @@ TCstatusCode TCrefresh(
 	/* PHASE 2: Issue serial data. ------------------------------------ */
 
 	/* Total number of bytes to output; includes latch data at end. */
-	len = (pixelsPerStrand + 1) * bytesPerPixel;
+	len = bytesPerPixel * (pixelsPerStrand + ((pixelsPerStrand+63)/64));
 
 	/* Get current time (in microseconds) both before and after
 	   write operation.  This is to isolate I/O-bound statistics
@@ -656,12 +656,13 @@ TCstatusCode TCsetStrandPin(
 	   the end of the buffer. */
 	if((bytesPerPixel == 64) && (strand == 7) && pixelOutBuffer)
 	{
-		unsigned int  offset;
-		unsigned char i;
+		int i,latchOffset,latchLen;
 
-		offset = pixelsPerStrand * bytesPerPixel;
-		for(i=1;i<bytesPerPixel;i+=2)
-			pixelOutBuffer[offset + i] = bit;
+		latchOffset = bytesPerPixel * pixelsPerStrand;
+		latchLen    = bytesPerPixel * ((pixelsPerStrand + 63) / 64);
+
+		for(i=1;i<latchLen;i+=2)
+			pixelOutBuffer[latchOffset + i] = bit;
 	}
 
 	return TC_OK;
