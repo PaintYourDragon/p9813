@@ -822,7 +822,8 @@ but THOUSANDS of pixels -- will benefit from a particular hardware
 configuration step.  This requires a full FTDI breakout board; the simple
 6-pin adapter need not apply.  It also requires access to a Windows PC
 during the configuration process, but the chip will then work across all
-the different platforms after that.
+the different platforms after that.  Finally, a 74HC04 hex inverter IC
+(available from DigiKey, etc.) is needed.
 
 Normally one pin on the FTDI chip is used by the library for bitbanging
 a serial clock to synchronize the data transfer.  But there's a special
@@ -866,6 +867,9 @@ pin as the serial clock, use the pin labeled either RXLED or CBUS1.
 Unlike the software bitbang approach, this function cannot be remapped
 to another pin through software; it can only be changed using FT_Prog.
 CTS is now available as another strand data pin using TCsetStrandPin().
+
+Because "BitBang WRn" is low when active, it's necessary to invert the
+signal from this pin -- a 74HC04 hex inverter IC works well for this.
 
 Some minor adjustments are then required of one's software:
 
