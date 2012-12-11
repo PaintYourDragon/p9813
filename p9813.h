@@ -36,6 +36,10 @@
 #ifndef _P9813_H_
 #define _P9813_H_
 
+#if defined __cplusplus
+extern "C" {
+#endif
+
 #include <stdint.h>
 
 typedef uint32_t TCpixel;
@@ -117,5 +121,9 @@ extern void
 	TCdisableGamma(void),
 	TCprintStats(TCstats*),
 	TCprintError(TCstatusCode);
+
+#if defined __cplusplus
+};
+#endif
 
 #endif  /* _P9813_H_ */
